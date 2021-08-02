@@ -1,0 +1,51 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bastetftm-deployment
+spec:
+  selector:
+    matchLabels:
+      app: bastetftm
+  template:
+    metadata:
+      labels:
+        app: bastetftm
+    spec:
+      containers:
+      - name: bastetftm
+        image: bastetftm:v4
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+        env:
+           - name: MongoDbSetting__Host
+             value: mongodb-service
+           - name: MongoDbSetting__Password
+             valueFrom:
+                secretKeyRef:
+                  name: bastet-secrets
+                  key: mongodb-password
+        livenessProbe:
+                httpGet:
+                  path: /Health/Live
+                  port: 80
+        readinessProbe:
+                httpGet:
+                  path: /Health/Ready
+                  port: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bastetftm-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: bastetftm
+  ports:
+  - port: 80
+    targetPort: 80
