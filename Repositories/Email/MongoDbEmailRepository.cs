@@ -33,12 +33,13 @@ namespace BastetFTMAPI.Repositories
         }
         public async Task<EmailInfo> GetEmailAsync(Guid cId, Guid eId)
         {
-            var email = (await clientCollection.Aggregate()
-                .Match(filterBuilder.Eq(x => x.Id, cId) & filterBuilder.ElemMatch(x => x.Emails, Builders<EmailInfo>.Filter.Eq(x => x.Id, eId)))
-                .ToListAsync())
+            var filter = filterBuilder.Eq(c => c.Id, cId);
+
+            var email = (await clientCollection.Find(filter).ToListAsync())
                 .Select(x => x.Emails)
-                .FirstOrDefault()
-                .SingleOrDefault();
+                .ToList()[0]
+                .SingleOrDefault(x => x.Id == eId);
+
             return email;
         }
     }

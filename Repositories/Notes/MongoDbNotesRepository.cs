@@ -33,12 +33,13 @@ namespace BastetFTMAPI.Repositories
         }
         public async Task<NoteInfo> GetNoteAsync(Guid cId, Guid nId)
         {
-            var note = (await clientCollection.Aggregate()
-                .Match(filterBuilder.Eq(x => x.Id, cId) & filterBuilder.ElemMatch(x => x.Notes, Builders<NoteInfo>.Filter.Eq(x => x.Id, nId)))
-                .ToListAsync())
+            var filter = filterBuilder.Eq(c => c.Id, cId);
+
+            var note = (await clientCollection.Find(filter).ToListAsync())
                 .Select(x => x.Notes)
-                .FirstOrDefault()
-                .SingleOrDefault();
+                .ToList()[0]
+                .SingleOrDefault(x => x.Id == nId);
+
             return note;
         }
     }

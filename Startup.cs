@@ -44,17 +44,19 @@ namespace BastetAPI
             {
                 return new MongoClient(mongoDbSettings.ConnectionString);
             })
-                    .AddSingleton<IUserService, UserService>()
-                    .AddSingleton<IClientsRepository, MongoDbClientsRepository>()
-                    .AddSingleton<IAddressesRepository, MongoDbAddressesRepository>()
-                    .AddSingleton<IEmailRepository, MongoDbEmailRepository>()
-                    .AddSingleton<IPhonesRepository, MongoDbPhonesRepository>()
-                    .AddSingleton<ITicketsRepository, MongoDbTicketsRepository>()
-                    .AddSingleton<INotesRepository, MongoDbNotesRepository>();
-
+                    .AddTransient<IUserService, UserService>()
+                    .AddTransient<IClientsRepository, MongoDbClientsRepository>()
+                    .AddTransient<IAddressesRepository, MongoDbAddressesRepository>()
+                    .AddTransient<IEmailRepository, MongoDbEmailRepository>()
+                    .AddTransient<IPhonesRepository, MongoDbPhonesRepository>()
+                    .AddTransient<ITicketsRepository, MongoDbTicketsRepository>()
+                    .AddTransient<INotesRepository, MongoDbNotesRepository>();
+            
+            //Add Auto Mapper
+            services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             // Remove Suppress Async suffix in action names at run time o => { o.SuppressAsyncSuffixInActionNames = false; }
-            services.AddControllers();
+            services.AddControllers(o => { o.SuppressAsyncSuffixInActionNames = false; });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v4", new OpenApiInfo { Title = "Bastet API", Version = "v4" });
@@ -75,7 +77,7 @@ namespace BastetAPI
                 ValidateAudience = false,
                 //ValidAudience = "",
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration.GetSection("JwtKey").ToString()))
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("455578741455578741455578741455578741455578741"))
               };
             });
 
@@ -109,8 +111,8 @@ namespace BastetAPI
                 app.UseHttpsRedirection();
             }
 
-            app.UseRouting();
-            //.UseHttpsRedirection();
+            app.UseRouting()
+               .UseHttpsRedirection();
 
             app.UseAuthentication()
                .UseAuthorization();
@@ -128,6 +130,7 @@ namespace BastetAPI
                     Predicate = (check) => check.Tags.Contains("Ready"),
                     ResponseWriter = async (context, report) =>
                     {
+                        var mongoDbSettings = Configuration.GetSection(nameof(MongoDbSetting)).Get<MongoDbSetting>();
                         var result = JsonSerializer.Serialize(
                             new
                             {
@@ -137,7 +140,9 @@ namespace BastetAPI
                                     Name = entry.Key,
                                     Status = entry.Value.Status.ToString(),
                                     Exception = entry.Value.Exception != null ? entry.Value.Exception.Message : "None",
-                                    Duration = entry.Value.Duration.ToString()
+                                    Duration = entry.Value.Duration.ToString(),
+                                    ConnectionInfo = mongoDbSettings.ConnectionString
+
                                 })
                             });
                         context.Response.ContentType = MediaTypeNames.Application.Json;

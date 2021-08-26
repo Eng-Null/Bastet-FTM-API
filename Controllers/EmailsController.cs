@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using AutoMapper;
 using BastetAPI.DTOs;
 using BastetAPI.Entities;
 using BastetFTMAPI.Repositories;
@@ -9,26 +11,39 @@ using Microsoft.Extensions.Logging;
 
 namespace BastetFTMAPI.Controllers
 {
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager, Owner, Guest")]
     [Route("api/[controller]")]
     [ApiController]
     public class EmailsController : ControllerBase
     {
         private readonly IEmailRepository repository;
         private readonly ILogger<EmailsController> logger;
+        private readonly IMapper _mapper;
 
-        public EmailsController(IEmailRepository repo, ILogger<EmailsController> log)
+        public EmailsController(IEmailRepository repo, ILogger<EmailsController> log, IMapper mapper)
         {
             repository = repo;
             logger = log;
+            _mapper = mapper;
         }
-        /// <summary>
-        /// Create a new client EmailInfo
-        /// </summary>
-        /// <param name="ClientDto"> new client EmailInfo data as json</param>
-        /// <returns></returns>
-        [HttpPost("{clientId:Guid}")]
-        public async Task<IActionResult> CreateEmailAsync(Guid clientId, CreateEmailInfoDto emailDto)
+
+        [HttpGet("{cId:Guid}/{eId:Guid}")]
+        public async Task<IActionResult> GetEmailAsync(Guid cId, Guid eId)
+        {
+            var email = await repository.GetEmailAsync(cId, eId);
+
+            if (email is null)
+            {
+                logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: ({eId}) Email NotFound");
+                return NotFound();
+            }
+
+            logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: ({eId}) Email Returned");
+            return Ok(email);
+        }
+
+        [HttpPost("{cId:Guid}")]
+        public async Task<IActionResult> CreateEmailAsync(Guid cId, CreateEmailInfoDto emailDto)
         {
             EmailInfo email = new()
             {
@@ -36,28 +51,34 @@ namespace BastetFTMAPI.Controllers
                 Email = emailDto.Email
             };
 
-            await repository.CreateEmailAsync(clientId, email);
+            await repository.CreateEmailAsync(cId, email);
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client Email Created");
-            return Ok(email);
+            return CreatedAtAction(nameof(GetEmailAsync), new { cId, eId = email.Id }, _mapper.Map<EmailInfoDto>(email));
         }
-        /// <summary>
-        /// Delete Client EmailInfo
-        /// </summary>
-        /// <param name="clientId">Client ID</param>
-        /// <param name="emailId">EmailInfo ID</param>
-        /// <returns></returns>
-        [HttpDelete("{clientId:Guid}/{emailId:Guid}")]
-        public async Task<IActionResult> DeleteClientEmailAsync(Guid clientId, Guid emailId)
+
+        [HttpDelete("{cId:Guid}/{eId:Guid}")]
+        public async Task<IActionResult> DeleteClientEmailAsync(Guid cId, Guid eId)
         {
-            var existingEmail = await repository.GetEmailAsync(clientId, emailId);
+            var existingEmail = await repository.GetEmailAsync(cId, eId);
 
             if (existingEmail is null)
             {
+                logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: ({cId}) Email NotFound");
                 return NotFound();
             }
-
-            await repository.DeleteEmailAsync(clientId, emailId);
-            logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client's Email Deleted");
+            await repository.DeleteEmailAsync(cId, eId);
+            
+            var data = new List<EmailInfo>
+            {
+                new EmailInfo
+                {
+                    Id = existingEmail.Id,
+                    Email = existingEmail.Email
+                }
+            };
+            var table = data.ToStringTable(u => u.Id,
+                                                u => u.Email);
+            logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client's Email Deleted\n{table}");
             return Ok();
         }
     }

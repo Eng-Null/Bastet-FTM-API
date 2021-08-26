@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using BastetAPI;
+using AutoMapper;
 using BastetAPI.DTOs;
 using BastetAPI.Entities;
 using BastetFTMAPI.Parameters;
@@ -14,39 +13,42 @@ using Microsoft.Extensions.Logging;
 
 namespace BastetFTMAPI.Controllers
 {
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager, Owner")]
     [Route("api/[controller]")]
     [ApiController]
     public class TicketsController : ControllerBase
     {
         private readonly ITicketsRepository repository;
         private readonly ILogger<TicketsController> logger;
+        private readonly IMapper _mapper;
 
-        public TicketsController(ITicketsRepository repo, ILogger<TicketsController> log)
+        public TicketsController(ITicketsRepository repo, ILogger<TicketsController> log, IMapper mapper)
         {
             repository = repo;
             logger = log;
+            _mapper = mapper;
         }
 
         [HttpGet("{clientId:Guid}")]
         public async Task<IEnumerable<TicketInfoDto>> GetTicketsAsync([FromQuery] PaginationParameters clientParameters, Guid clientId)
         {
-            var clients = await repository.GetTicketsAsync(clientParameters, clientId);
+            var tickets = await repository.GetTicketsAsync(clientParameters, clientId);
 
             var metadata = new
             {
-                clients.TotalCount,
-                clients.PageSize,
-                clients.CurrentPage,
-                clients.TotalPages,
-                clients.HasNext,
-                clients.HasPrevious
+                tickets.TotalCount,
+                tickets.PageSize,
+                tickets.CurrentPage,
+                tickets.TotalPages,
+                tickets.HasNext,
+                tickets.HasPrevious
             };
 
             Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Retrieved Page : ({clientParameters.PageNumber}) and Page Size ({clientParameters.PageSize}) Tickets ");
 
-            return clients.Select(x => x.TicketsAsDto());
+            return _mapper.Map<IEnumerable<TicketInfoDto>>(tickets);
+            //clients.Select(x => x.TicketsAsDto());
         }
         [HttpPost("{clientId:Guid}")]
         public async Task<IActionResult> CreateTicketAsync(Guid clientId, CreateTicketInfoDto ticketDto)

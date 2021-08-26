@@ -18,7 +18,6 @@ namespace BastetFTMAPI.Repositories
             IMongoDatabase database = mongoClient.GetDatabase(DB_NAME);
             clientCollection = database.GetCollection<Client>(Collection_Name);
         }
-
         public async Task CreateAddressAsync(Guid cId, AddressInfo a)
         {
             var clientFilter = filterBuilder.Eq(c => c.Id, cId);
@@ -34,12 +33,13 @@ namespace BastetFTMAPI.Repositories
         }
         public async Task<AddressInfo> GetAddressAsync(Guid cId, Guid aId)
         {
-            var address = (await clientCollection.Aggregate()
-                 .Match(filterBuilder.Eq(x => x.Id, cId) & filterBuilder.ElemMatch(x => x.Addresses, Builders<AddressInfo>.Filter.Eq(x => x.Id, aId)))
-                 .ToListAsync())
-                 .Select(x => x.Addresses)
-                 .FirstOrDefault()
-                 .SingleOrDefault();
+            var filter = filterBuilder.Eq(c => c.Id, cId);
+
+            var address = (await clientCollection.Find(filter).ToListAsync())
+                .Select(x => x.Addresses)
+                .ToList()[0]
+                .SingleOrDefault(x => x.Id == aId);
+
             return address;
         }
 

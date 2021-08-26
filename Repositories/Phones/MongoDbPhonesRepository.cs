@@ -34,12 +34,13 @@ namespace BastetFTMAPI.Repositories
         }
         public async Task<PhoneInfo> GetPhoneAsync(Guid cId, Guid mId)
         {
-            var mobile = (await clientCollection.Aggregate()
-                .Match(filterBuilder.Eq(x => x.Id, cId) & filterBuilder.ElemMatch(x => x.PhoneNumbers, Builders<PhoneInfo>.Filter.Eq(x => x.Id, mId)))
-                .ToListAsync())
+            var filter = filterBuilder.Eq(c => c.Id, cId);
+
+            var mobile = (await clientCollection.Find(filter).ToListAsync())
                 .Select(x => x.PhoneNumbers)
-                .FirstOrDefault()
-                .SingleOrDefault();
+                .ToList()[0]
+                .SingleOrDefault(x => x.Id == mId);
+
             return mobile;
         }
     }

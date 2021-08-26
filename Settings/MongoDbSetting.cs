@@ -22,6 +22,7 @@
     //kubectl delete -f .\BastetFTM.yaml
 
     //kubectl create secret generic bastet-secrets --from-literal=mongodb-password='Red^1992580'
+    //dotnet user-secrets set MongoDbSettings:Password Red^1992580
     public class MongoDbSetting
     {
         public string Host { get; set; }

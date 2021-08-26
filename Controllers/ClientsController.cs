@@ -3,34 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using AutoMapper;
 using BastetAPI.DTOs;
 using BastetAPI.Entities;
 using BastetAPI.Repositories;
 using BastetFTMAPI.Parameters;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace BastetAPI.Controllers
-{   [Authorize(Roles = "Manager")]
+{   //[Authorize(Roles = "Manager")]
     [ApiController]
     [Route("api/[controller]")]
     public class ClientsController : ControllerBase
     {
         private readonly IClientsRepository repository;
         private readonly ILogger<ClientsController> logger;
+        private readonly IMapper _mapper;
 
-        public ClientsController(IClientsRepository repo, ILogger<ClientsController> log)
+        public ClientsController(IClientsRepository repo, ILogger<ClientsController> log, IMapper mapper)
         {
             repository = repo;
             logger = log;
+            _mapper = mapper;
         }
 
         #region HttpGet Commands
-        /// <summary>
-        /// Get a List of clients
-        /// </summary>
-        /// <returns></returns>
         [HttpGet]
         public async Task<IEnumerable<ClientDto>> GetClientsAsync([FromQuery] PaginationParameters clientParameters, string name = null)
         {
@@ -49,12 +47,10 @@ namespace BastetAPI.Controllers
             Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Retrieved Page : ({clientParameters.PageNumber}) and Page Size ({clientParameters.PageSize}) Clients ");
 
-            return clients.Select(x => x.ClientAsDto());
+            return _mapper.Map<IEnumerable<ClientDto>>(clients);
+            //clients.Select(x => x.ClientAsDto());
         }
-        /// <summary>
-        /// Get a List of clients id, firstname, lastname, suffix
-        /// </summary>
-        /// <returns>List<ScuffedClientDto></returns>
+
         [HttpGet("Names")]
         public async Task<IEnumerable<ScuffedClientDto>> GetClientsNamesAsync([FromQuery] PaginationParameters clientParameters, string name = null)
         {
@@ -74,13 +70,10 @@ namespace BastetAPI.Controllers
             Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Retrieved Page : ({clientParameters.PageNumber}) and Page Size ({clientParameters.PageSize}) Clients ");
 
-            return data.Select(x => x.ScuffedClientAsDto());
+            return _mapper.Map<IEnumerable<ScuffedClientDto>>(data);
+            //data.Select(x => x.ScuffedClientAsDto());
         }
-        /// <summary>
-        /// Get the selected client
-        /// </summary>
-        /// <param name="id"> Id of the client</param>
-        /// <returns></returns>
+
         [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetClientAsync(Guid id)
         {
@@ -89,19 +82,14 @@ namespace BastetAPI.Controllers
             if (client is null)
             {
                 logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client Not Found ");
-                return null;
+                return NotFound();
             }
 
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client Found");
-            return Ok(client.ClientAsDto());
+            return Ok(_mapper.Map<ClientDto>(client));
         }
         #endregion HttpGet Commands
         #region HttpPost Commands
-        /// <summary>
-        /// Create a new client
-        /// </summary>
-        /// <param name="ClientDto"> new client data as json</param>
-        /// <returns></returns>
         [HttpPost]
         public async Task<IActionResult> CreateClientAsync(CreateClientDto ClientDto)
         {
@@ -144,13 +132,9 @@ namespace BastetAPI.Controllers
 
             await repository.CreateClientAsync(client);
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client Created");
-            return CreatedAtAction(nameof(GetClientAsync), new { id = client.Id }, client.ClientAsDto());
+            return CreatedAtAction(nameof(GetClientAsync), new { id = client.Id }, _mapper.Map<ClientDto>(client));
         }
-        /// <summary>
-        /// Add a list of clients
-        /// </summary>
-        /// <param name="ClientDto"> new clients data as json</param>
-        /// <returns></returns>
+
         [HttpPost("List")]
         public async Task<IActionResult> CreateClientsAsync(List<CreateClientDto> ClientDto)
         {
@@ -199,16 +183,10 @@ namespace BastetAPI.Controllers
 
             await Task.WhenAll(tasks);
             logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}:({tasks.Count}) Client Created");
-            return Ok(ClientDto);
+            return StatusCode(201);
         }
         #endregion HttpPost Commands
         #region HttpPut Commands
-        /// <summary>
-        /// Update client information
-        /// </summary>
-        /// <param name="id">client id</param>
-        /// <param name="ClientDto">updated information</param>
-        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         public async Task<IActionResult> UpdateClientAsync(Guid id, UpdateClientDto ClientDto)
         {
@@ -216,6 +194,7 @@ namespace BastetAPI.Controllers
 
             if (existingClient is null)
             {
+                logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client ({id}) Not Found");
                 return NotFound();
             }
 
@@ -229,11 +208,6 @@ namespace BastetAPI.Controllers
         }
         #endregion HttpPut Commands
         #region HttpDelete Commands
-        /// <summary>
-        /// Delete Client
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         public async Task<IActionResult> DeleteClientAsync(Guid id)
         {
@@ -241,6 +215,7 @@ namespace BastetAPI.Controllers
 
             if (existingClient is null)
             {
+                logger.LogInformation($"{DateTime.UtcNow:hh:mm:ss}: Client ({id}) Not Found");
                 return NotFound();
             }
 

@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using AutoMapper;
 using BastetAPI;
 using BastetFTMAPI.Authentication;
 using Microsoft.AspNetCore.Mvc;
@@ -17,10 +18,13 @@ namespace BastetFTMAPI.Controllers
     {
         private readonly IUserService repository;
         private readonly ILogger<UserController> logger;
-        public UserController(IUserService repo, ILogger<UserController> log)
+        private readonly IMapper _mapper;
+
+        public UserController(IUserService repo, ILogger<UserController> log, IMapper mapper)
         {
             repository = repo;
             logger = log;
+            _mapper = mapper;
         }
 
         [HttpGet]
@@ -28,7 +32,8 @@ namespace BastetFTMAPI.Controllers
         {
             var users = await repository.GetUsersAsync();
 
-            return users.Select(x => x.UsersAsDto());
+            return _mapper.Map<IEnumerable<UserDto>>(users);
+                //users.Select(x => x.UsersAsDto());
         }
 
         [HttpGet("{id:Guid}")]
